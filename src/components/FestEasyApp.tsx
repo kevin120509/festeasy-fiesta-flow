@@ -28,9 +28,11 @@ import {
   Settings,
   User,
   FileText,
-  Eye
+  Eye,
+  Loader2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import heroImage from '@/assets/hero-image.jpg';
 
 // Types
@@ -106,51 +108,50 @@ const FestEasyApp: React.FC = () => {
   const [bookingRequests, setBookingRequests] = useState<BookingRequest[]>([]);
   const [services, setServices] = useState<Service[]>([]);
 
-  // Mock Data
-  const mockProviders: Provider[] = [
-    {
-      id: '1',
-      name: 'Delicious Catering',
-      category: 'Comida',
-      description: 'Catering premium para todo tipo de eventos con ingredientes frescos y presentación impecable.',
-      price: 25,
-      rating: 4.8,
-      reviews: 156,
-      location: 'Ciudad de México',
-      image: '/api/placeholder/300/200',
-      services: ['Buffet', 'Servicio a la mesa', 'Barras temáticas'],
-      gallery: ['/api/placeholder/400/300', '/api/placeholder/400/300', '/api/placeholder/400/300'],
-      distance: 2.5
-    },
-    {
-      id: '2',
-      name: 'Sound & Lights Pro',
-      category: 'Música',
-      description: 'DJ profesional y sistema de sonido de alta calidad para crear la atmósfera perfecta.',
-      price: 150,
-      rating: 4.9,
-      reviews: 203,
-      location: 'Ciudad de México',
-      image: '/api/placeholder/300/200',
-      services: ['DJ', 'Sonido profesional', 'Iluminación LED'],
-      gallery: ['/api/placeholder/400/300', '/api/placeholder/400/300', '/api/placeholder/400/300'],
-      distance: 1.8
-    },
-    {
-      id: '3',
-      name: 'Decoraciones Elegantes',
-      category: 'Decoración',
-      description: 'Transformamos espacios con decoraciones únicas y personalizadas para tu evento especial.',
-      price: 200,
-      rating: 4.7,
-      reviews: 89,
-      location: 'Ciudad de México',
-      image: '/api/placeholder/300/200',
-      services: ['Centros de mesa', 'Arcos florales', 'Iluminación ambiental'],
-      gallery: ['/api/placeholder/400/300', '/api/placeholder/400/300', '/api/placeholder/400/300'],
-      distance: 3.2
-    }
-  ];
+  // State for providers
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch providers from Supabase
+  useEffect(() => {
+    const fetchProviders = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('providers')
+          .select('*');
+        
+        if (error) throw error;
+        
+        const formattedProviders = data.map(provider => ({
+          id: provider.id,
+          name: provider.name,
+          category: provider.category,
+          description: provider.description,
+          price: Number(provider.price),
+          rating: Number(provider.rating),
+          reviews: provider.reviews,
+          location: provider.location,
+          image: provider.image_url,
+          services: provider.services || [],
+          gallery: provider.gallery || [],
+          distance: Number(provider.distance)
+        }));
+        
+        setProviders(formattedProviders);
+      } catch (error) {
+        console.error('Error fetching providers:', error);
+        toast({ 
+          title: "Error", 
+          description: "No se pudieron cargar los proveedores",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProviders();
+  }, []);
 
   const mockRequests: BookingRequest[] = [
     {
@@ -240,14 +241,14 @@ const FestEasyApp: React.FC = () => {
   };
 
   // Filtering
-  const filteredProviders = mockProviders.filter(provider => {
+  const filteredProviders = providers.filter(provider => {
     const matchesSearch = provider.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          provider.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || provider.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
-  const categories = ['all', ...Array.from(new Set(mockProviders.map(p => p.category)))];
+  const categories = ['all', ...Array.from(new Set(providers.map(p => p.category)))];
 
   // Public View Component
   const PublicView = () => (
@@ -403,7 +404,15 @@ const FestEasyApp: React.FC = () => {
               </DialogContent>
             </Dialog>
             
-            <Button size="xl" variant="outline" className="text-lg border-white text-white hover:bg-white hover:text-primary">
+            <Button 
+              size="xl" 
+              variant="outline" 
+              className="text-lg border-white text-white hover:bg-white hover:text-primary"
+              onClick={() => {
+                const explorarSection = document.getElementById('explorar');
+                explorarSection?.scrollIntoView({ behavior: 'smooth' });
+              }}
+            >
               Explorar Proveedores
             </Button>
           </div>
@@ -508,11 +517,18 @@ const FestEasyApp: React.FC = () => {
           </div>
 
           {/* Providers Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProviders.map((provider) => (
-              <ProviderCard key={provider.id} provider={provider} onAddToCart={addToCart} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-2 text-muted-foreground">Cargando proveedores...</span>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredProviders.map((provider) => (
+                <ProviderCard key={provider.id} provider={provider} onAddToCart={addToCart} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -866,21 +882,35 @@ const FestEasyApp: React.FC = () => {
     const handleGeneratePlan = async () => {
       setIsGenerating(true);
       
-      // Simulate AI processing
-      setTimeout(() => {
-        const mockAIResponse = {
-          totalCost: budget * 0.8,
-          recommendations: [
-            { ...mockProviders[0], reason: "Excelente relación calidad-precio y cerca de tu ubicación" },
-            { ...mockProviders[1], reason: "Equipos profesionales ideales para tu presupuesto" },
-            { ...mockProviders[2], reason: "Estilo elegante que complementa tu evento" }
-          ],
-          summary: "Hemos seleccionado estos proveedores basándonos en tu presupuesto y ubicación. Esta combinación te dará un evento memorable dentro de tu rango de precio."
-        };
+      // Call Gemini AI API
+      try {
+        const response = await supabase.functions.invoke('gemini-ai-assistant', {
+          body: {
+            budget,
+            location,
+            eventType: 'Fiesta general',
+            providers
+          }
+        });
+
+        if (response.error) throw response.error;
         
-        setAiResponse(mockAIResponse);
+        setAiResponse(response.data);
+      } catch (error) {
+        console.error('Error calling AI assistant:', error);
+        // Fallback response
+        const fallbackResponse = {
+          totalCost: budget * 0.8,
+          recommendations: providers.slice(0, 3).map(provider => ({
+            ...provider,
+            reason: "Selección recomendada basada en calidad y ubicación"
+          })),
+          summary: "Hemos seleccionado estos proveedores basándonos en tu presupuesto y ubicación."
+        };
+        setAiResponse(fallbackResponse);
+      } finally {
         setIsGenerating(false);
-      }, 3000);
+      }
     };
 
     if (aiResponse) {

@@ -14,7 +14,107 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      booking_requests: {
+        Row: {
+          client_name: string
+          created_at: string
+          event_date: string
+          event_type: string
+          guests: number
+          id: string
+          location: string
+          provider_id: string | null
+          service: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_name: string
+          created_at?: string
+          event_date: string
+          event_type: string
+          guests: number
+          id?: string
+          location: string
+          provider_id?: string | null
+          service: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_name?: string
+          created_at?: string
+          event_date?: string
+          event_type?: string
+          guests?: number
+          id?: string
+          location?: string
+          provider_id?: string | null
+          service?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_requests_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      providers: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          distance: number | null
+          gallery: string[] | null
+          id: string
+          image_url: string | null
+          location: string | null
+          name: string
+          price: number
+          rating: number | null
+          reviews: number | null
+          services: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          distance?: number | null
+          gallery?: string[] | null
+          id?: string
+          image_url?: string | null
+          location?: string | null
+          name: string
+          price: number
+          rating?: number | null
+          reviews?: number | null
+          services?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          distance?: number | null
+          gallery?: string[] | null
+          id?: string
+          image_url?: string | null
+          location?: string | null
+          name?: string
+          price?: number
+          rating?: number | null
+          reviews?: number | null
+          services?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
