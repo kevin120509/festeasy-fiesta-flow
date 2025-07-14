@@ -34,21 +34,37 @@ const Auth = () => {
     const password = formData.get("password") as string;
     const fullName = formData.get("fullName") as string;
     const businessName = formData.get("businessName") as string;
-    const category = formData.get("category") as string;
+    const selectedCategory = formData.get("category") as string || category;
 
     try {
       if (authMode === "login") {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
         if (error) throw error;
         
-        toast({
-          title: "¡Bienvenido!",
-          description: "Has iniciado sesión correctamente.",
-        });
+        // Fetch user profile to determine redirect
+        if (data.user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("user_id", data.user.id)
+            .single();
+          
+          toast({
+            title: "¡Bienvenido!",
+            description: "Has iniciado sesión correctamente.",
+          });
+          
+          // Redirect based on role
+          if (profile?.role === 'provider') {
+            navigate("/");
+          } else {
+            navigate("/");
+          }
+        }
       } else {
         const metadata: any = {
           role: userType,
@@ -57,10 +73,10 @@ const Auth = () => {
 
         if (userType === "provider") {
           metadata.business_name = businessName;
-          metadata.category = category;
+          metadata.category = selectedCategory;
         }
 
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -71,15 +87,24 @@ const Auth = () => {
 
         if (error) throw error;
 
-        toast({
-          title: "¡Cuenta creada!",
-          description: "Por favor verifica tu email para completar el registro.",
-        });
+        if (data.user && !data.user.email_confirmed_at) {
+          toast({
+            title: "¡Cuenta creada!",
+            description: "Por favor verifica tu email para completar el registro.",
+          });
+        } else if (data.user) {
+          toast({
+            title: "¡Cuenta creada!",
+            description: "Has sido registrado exitosamente.",
+          });
+          navigate("/");
+        }
       }
     } catch (error: any) {
+      console.error("Auth error:", error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Ha ocurrido un error durante la autenticación",
         variant: "destructive",
       });
     } finally {

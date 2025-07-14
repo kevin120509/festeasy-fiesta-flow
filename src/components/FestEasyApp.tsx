@@ -122,48 +122,39 @@ const FestEasyApp: React.FC = () => {
     }
   }, [user, authLoading, navigate]);
 
-  // Set current view based on user role
-  useEffect(() => {
-    if (profile?.role === 'provider') {
-      setCurrentView('provider');
-    } else {
-      setCurrentView('public');
-    }
-  }, [profile]);
-
   // Fetch providers from Supabase
   useEffect(() => {
     const fetchProviders = async () => {
       try {
         const { data, error } = await supabase
-          .from('providers')
-          .select('*');
+          .from('provider_profiles')
+          .select(`
+            *,
+            profiles!inner(user_id, full_name)
+          `);
         
         if (error) throw error;
         
         const formattedProviders = data.map(provider => ({
           id: provider.id,
-          name: provider.name,
+          name: provider.business_name,
           category: provider.category,
-          description: provider.description,
-          price: Number(provider.price),
-          rating: Number(provider.rating),
-          reviews: provider.reviews,
-          location: provider.location,
-          image: provider.image_url,
+          description: provider.description || 'Proveedor de servicios para eventos',
+          price: provider.price_range ? parseInt(provider.price_range.split('-')[0]) || 500 : 500,
+          rating: Number(provider.rating) || 4.5,
+          reviews: provider.reviews || 0,
+          location: provider.location || 'Ciudad de México',
+          image: provider.image_url || `https://images.unsplash.com/photo-1519225421980-715cb0215aed?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80`,
           services: provider.services || [],
           gallery: provider.gallery || [],
-          distance: Number(provider.distance)
+          distance: 2.5
         }));
         
         setProviders(formattedProviders);
       } catch (error) {
         console.error('Error fetching providers:', error);
-        toast({ 
-          title: "Error", 
-          description: "No se pudieron cargar los proveedores",
-          variant: "destructive"
-        });
+        // Use fallback data if there are no provider profiles yet
+        setProviders([]);
       } finally {
         setLoading(false);
       }
@@ -221,17 +212,6 @@ const FestEasyApp: React.FC = () => {
     }
   };
 
-  const handleSwitchToProvider = () => {
-    if (profile?.role === 'provider') {
-      setCurrentView('provider');
-    } else {
-      toast({
-        title: "Acceso denegado",
-        description: "Solo los proveedores pueden acceder a esta sección",
-        variant: "destructive"
-      });
-    }
-  };
 
   const addToCart = (provider: Provider) => {
     setCartItems(prev => [...prev, provider]);
@@ -295,9 +275,7 @@ const FestEasyApp: React.FC = () => {
             <div className="hidden md:flex items-center space-x-2 text-sm">
               <User className="h-4 w-4" />
               <span>{profile?.full_name || user?.email}</span>
-              {profile?.role === 'provider' && (
-                <Badge variant="secondary">Proveedor</Badge>
-              )}
+              <Badge variant="secondary">Cliente</Badge>
             </div>
 
             {/* Cart */}
@@ -357,11 +335,11 @@ const FestEasyApp: React.FC = () => {
               </DialogContent>
             </Dialog>
 
-            {profile?.role === 'provider' && (
-              <Button variant="outline" onClick={handleSwitchToProvider}>
+            {profile?.role === 'provider' ? (
+              <Button variant="outline" onClick={() => navigate("/")}>
                 Panel Proveedor
               </Button>
-            )}
+            ) : null}
 
             <Button variant="ghost" size="icon" onClick={signOut}>
               <LogOut className="h-4 w-4" />
@@ -395,15 +373,8 @@ const FestEasyApp: React.FC = () => {
               <div className="border-t pt-4">
                 <div className="text-sm text-muted-foreground mb-2">
                   {profile?.full_name || user?.email}
-                  {profile?.role === 'provider' && (
-                    <Badge variant="secondary" className="ml-2">Proveedor</Badge>
-                  )}
+                  <Badge variant="secondary" className="ml-2">Cliente</Badge>
                 </div>
-                {profile?.role === 'provider' && (
-                  <Button variant="outline" size="sm" onClick={handleSwitchToProvider} className="w-full mb-2">
-                    Panel Proveedor
-                  </Button>
-                )}
                 <Button variant="ghost" size="sm" onClick={signOut} className="w-full justify-start">
                   <LogOut className="h-4 w-4 mr-2" />
                   Cerrar Sesión
