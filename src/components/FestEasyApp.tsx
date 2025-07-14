@@ -29,9 +29,12 @@ import {
   User,
   FileText,
   Eye,
-  Loader2
+  Loader2,
+  LogOut
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import heroImage from '@/assets/hero-image.jpg';
 
@@ -90,11 +93,11 @@ interface BookingRequest {
 
 const FestEasyApp: React.FC = () => {
   const { toast } = useToast();
+  const { user, profile, signOut, isLoading: authLoading } = useAuth();
+  const navigate = useNavigate();
   
   // Application State
   const [currentView, setCurrentView] = useState<'public' | 'provider'>('public');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
   const [providerProfile, setProviderProfile] = useState<ProviderProfile | null>(null);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [userLocation, setUserLocation] = useState<string>('');
@@ -111,6 +114,22 @@ const FestEasyApp: React.FC = () => {
   // State for providers
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate]);
+
+  // Set current view based on user role
+  useEffect(() => {
+    if (profile?.role === 'provider') {
+      setCurrentView('provider');
+    } else {
+      setCurrentView('public');
+    }
+  }, [profile]);
 
   // Fetch providers from Supabase
   useEffect(() => {
@@ -150,8 +169,10 @@ const FestEasyApp: React.FC = () => {
       }
     };
 
-    fetchProviders();
-  }, []);
+    if (user) {
+      fetchProviders();
+    }
+  }, [user]);
 
   const mockRequests: BookingRequest[] = [
     {
@@ -200,21 +221,16 @@ const FestEasyApp: React.FC = () => {
     }
   };
 
-  const handleProviderLogin = () => {
-    setCurrentView('provider');
-    setIsAuthenticated(true);
-    setUser({ id: '1', email: 'proveedor@example.com', name: 'Mi Negocio', type: 'provider' });
-    setProviderProfile({
-      id: '1',
-      businessName: 'Mi Negocio de Eventos',
-      description: 'Especialistas en hacer realidad tus eventos soñados',
-      category: 'Catering',
-      logo: '/api/placeholder/100/100',
-      services: [],
-      rating: 4.8,
-      totalEarnings: 15750
-    });
-    setBookingRequests(mockRequests);
+  const handleSwitchToProvider = () => {
+    if (profile?.role === 'provider') {
+      setCurrentView('provider');
+    } else {
+      toast({
+        title: "Acceso denegado",
+        description: "Solo los proveedores pueden acceder a esta sección",
+        variant: "destructive"
+      });
+    }
   };
 
   const addToCart = (provider: Provider) => {
@@ -275,6 +291,15 @@ const FestEasyApp: React.FC = () => {
           </nav>
 
           <div className="flex items-center space-x-4">
+            {/* User Info */}
+            <div className="hidden md:flex items-center space-x-2 text-sm">
+              <User className="h-4 w-4" />
+              <span>{profile?.full_name || user?.email}</span>
+              {profile?.role === 'provider' && (
+                <Badge variant="secondary">Proveedor</Badge>
+              )}
+            </div>
+
             {/* Cart */}
             <Dialog>
               <DialogTrigger asChild>
@@ -332,8 +357,14 @@ const FestEasyApp: React.FC = () => {
               </DialogContent>
             </Dialog>
 
-            <Button variant="outline" onClick={handleProviderLogin}>
-              Soy Proveedor
+            {profile?.role === 'provider' && (
+              <Button variant="outline" onClick={handleSwitchToProvider}>
+                Panel Proveedor
+              </Button>
+            )}
+
+            <Button variant="ghost" size="icon" onClick={signOut}>
+              <LogOut className="h-4 w-4" />
             </Button>
 
             {/* Mobile Menu */}
@@ -361,6 +392,23 @@ const FestEasyApp: React.FC = () => {
               <a href="#testimonios" className="text-sm font-medium hover:text-primary">
                 Testimonios
               </a>
+              <div className="border-t pt-4">
+                <div className="text-sm text-muted-foreground mb-2">
+                  {profile?.full_name || user?.email}
+                  {profile?.role === 'provider' && (
+                    <Badge variant="secondary" className="ml-2">Proveedor</Badge>
+                  )}
+                </div>
+                {profile?.role === 'provider' && (
+                  <Button variant="outline" size="sm" onClick={handleSwitchToProvider} className="w-full mb-2">
+                    Panel Proveedor
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" onClick={signOut} className="w-full justify-start">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Cerrar Sesión
+                </Button>
+              </div>
             </nav>
           </div>
         )}
@@ -678,8 +726,7 @@ const FestEasyApp: React.FC = () => {
               variant="ghost" 
               onClick={() => {
                 setCurrentView('public');
-                setIsAuthenticated(false);
-                setUser(null);
+                signOut();
               }}
             >
               Cerrar Sesión

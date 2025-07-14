@@ -27,6 +27,7 @@ export type Database = {
           service: string
           status: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           client_name: string
@@ -40,6 +41,7 @@ export type Database = {
           service: string
           status?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           client_name?: string
@@ -53,6 +55,7 @@ export type Database = {
           service?: string
           status?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -63,6 +66,93 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          phone: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      provider_profiles: {
+        Row: {
+          business_name: string
+          category: string
+          created_at: string
+          description: string | null
+          gallery: string[] | null
+          id: string
+          image_url: string | null
+          location: string | null
+          price_range: string | null
+          rating: number | null
+          reviews: number | null
+          services: string[] | null
+          updated_at: string
+          user_id: string
+          verified: boolean | null
+        }
+        Insert: {
+          business_name: string
+          category: string
+          created_at?: string
+          description?: string | null
+          gallery?: string[] | null
+          id?: string
+          image_url?: string | null
+          location?: string | null
+          price_range?: string | null
+          rating?: number | null
+          reviews?: number | null
+          services?: string[] | null
+          updated_at?: string
+          user_id: string
+          verified?: boolean | null
+        }
+        Update: {
+          business_name?: string
+          category?: string
+          created_at?: string
+          description?: string | null
+          gallery?: string[] | null
+          id?: string
+          image_url?: string | null
+          location?: string | null
+          price_range?: string | null
+          rating?: number | null
+          reviews?: number | null
+          services?: string[] | null
+          updated_at?: string
+          user_id?: string
+          verified?: boolean | null
+        }
+        Relationships: []
       }
       providers: {
         Row: {
@@ -120,10 +210,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { user_uuid: string }
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
     }
     Enums: {
-      [_ in never]: never
+      user_role: "user" | "provider"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -250,6 +343,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      user_role: ["user", "provider"],
+    },
   },
 } as const
